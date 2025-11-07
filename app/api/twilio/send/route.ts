@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validatePhoneNumber, formatPhoneNumber } from '@/lib/twilio/client';
-import { hebesSenderPhoneNumbers, hebesSenderAccounts, hebesSendSMS } from '@/lib/hebes-api';
+import { hebesSenderPhoneNumbers, hebesSenderAccounts, hebesSendSMS, hebesSmsMessages } from '@/lib/hebes-api';
 import { findOrCreateConversationId } from '@/lib/conversations';
 import { findOrCreateTwilioConversation } from '@/lib/twilio/conversations';
 
@@ -112,6 +112,33 @@ export async function POST(request: NextRequest) {
       messageSid: result.data.twilio_response.parsed.sid,
       status: result.data.twilio_response.parsed.status,
     });
+
+    // Ensure conversation_id is stored in the database
+    // The Hebes API might not store conversation_sid in conversation_id field
+    if (result.data.local_message && result.data.local_message.id) {
+      const messageId = result.data.local_message.id;
+      const conversationIdToStore = twilioConversationSid || localConversationId;
+      
+      if (conversationIdToStore) {
+        try {
+          console.log('📝 Updating message conversation_id:', {
+            messageId: messageId,
+            conversationId: conversationIdToStore
+          });
+          
+          // Update the message to set conversation_id
+          await hebesSmsMessages.update({
+            id: messageId,
+            conversation_id: conversationIdToStore,
+          }, token);
+          
+          console.log('✅ Updated message conversation_id in database');
+        } catch (updateError: any) {
+          console.error('⚠️ Failed to update message conversation_id:', updateError.message);
+          // Don't fail the request if update fails - message was sent successfully
+        }
+      }
+    }
 
     return NextResponse.json({
       success: true,
