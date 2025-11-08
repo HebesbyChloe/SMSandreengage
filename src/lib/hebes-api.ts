@@ -322,7 +322,7 @@ export async function hebesSendSMS(
     local_message: any;
   };
 }> {
-  const url = `${HEBES_TWILIO_API_BASE}/send_sms.php`;
+  const url = `${HEBES_TWILIO_API_BASE}/send_sms_test.php`;
   
   const headers: HeadersInit = {
     'Content-Type': 'application/json',

@@ -19,6 +19,7 @@ async function getAccountIdFromPhone(senderPhoneNumberId: string, token?: string
 }
 
 export async function POST(request: NextRequest) {
+  console.log('vào 2');
   try {
     const body = await request.json();
     const { to, from, message, senderPhoneNumberId } = body;
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest) {
     console.log('📤 Sending SMS with status callback:', statusCallbackUrl);
 
     // Call Hebes Backend API to send SMS
-    console.log(`📡 Calling Hebes Backend API: send_sms.php`);
+    console.log(`📡 Calling Hebes Backend API: send_sms_test.php`);
     const result = await hebesSendSMS(sendData, token);
 
     console.log('✅ SMS sent successfully:', {

@@ -7,6 +7,7 @@ import { formatPhoneNumber } from '@/lib/twilio/client';
 
 // POST - Send SMS (legacy endpoint, uses Hebes Backend API)
 export async function POST(req: NextRequest) {
+  console.log('vào 1');
   try {
     const token = getTokenFromRequest(req);
     const body = await req.json();
@@ -80,6 +81,7 @@ export async function POST(req: NextRequest) {
 
     // Also get local conversation ID for database tracking
     const localConversationId = await findOrCreateConversationId(formattedTo, senderPhoneNumberId, token);
+    //const localConversationId = null;
     console.log('📞 Local conversation ID for', formattedTo, ':', localConversationId || 'NEW');
 
     // Prepare data for Hebes Backend API
@@ -108,7 +110,7 @@ export async function POST(req: NextRequest) {
     console.log('📤 Sending SMS with status callback:', statusCallbackUrl);
 
     // Call Hebes Backend API to send SMS
-    console.log(`📡 Calling Hebes Backend API: send_sms.php`);
+    console.log(`📡 Calling Hebes Backend API: send_sms_test.php`);
     const result = await hebesSendSMS(sendData, token);
 
     console.log('✅ SMS sent successfully:', {
