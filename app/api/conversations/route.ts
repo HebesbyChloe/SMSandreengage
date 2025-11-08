@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { hebesSmsMessages, hebesSenderPhoneNumbers, hebesContacts } from '@/lib/hebes-api';
 import { getTokenFromRequest } from '@/lib/api-helpers';
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 // GET - Get all conversations (unique phone numbers with last message)
 export async function GET(req: NextRequest) {
   try {
