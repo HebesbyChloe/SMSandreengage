@@ -19,20 +19,32 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (body.auth_token !== undefined) updateData.auth_token = body.auth_token;
     if (body.is_active !== undefined) updateData.is_active = body.is_active;
     
-    // Handle webhook URLs in settings JSON field
-    if (body.webhook_url !== undefined || body.pre_webhook_url !== undefined) {
+    // Handle conversation_service_sid and webhook URLs in settings JSON field
+    if (body.conversation_service_sid !== undefined || body.webhook_url !== undefined || body.pre_webhook_url !== undefined) {
       // Get existing account to preserve settings
       try {
         const existing = await hebesSenderAccounts.getById(id, token);
-        const existingSettings = existing.settings || {};
+        let existingSettings: any = existing.settings || {};
+        if (typeof existingSettings === 'string') {
+          try {
+            existingSettings = JSON.parse(existingSettings);
+          } catch (e) {
+            existingSettings = {};
+          }
+        }
+        if (!existingSettings) {
+          existingSettings = {};
+        }
         updateData.settings = {
           ...existingSettings,
+          ...(body.conversation_service_sid !== undefined && { conversation_service_sid: body.conversation_service_sid || undefined }),
           ...(body.webhook_url !== undefined && { webhook_url: body.webhook_url }),
           ...(body.pre_webhook_url !== undefined && { pre_webhook_url: body.pre_webhook_url }),
         };
       } catch {
         // If can't get existing, create new settings
         updateData.settings = {
+          ...(body.conversation_service_sid !== undefined && { conversation_service_sid: body.conversation_service_sid || undefined }),
           ...(body.webhook_url !== undefined && { webhook_url: body.webhook_url }),
           ...(body.pre_webhook_url !== undefined && { pre_webhook_url: body.pre_webhook_url }),
         };

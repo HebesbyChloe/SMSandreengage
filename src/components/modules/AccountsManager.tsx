@@ -18,11 +18,13 @@ export function AccountsManager() {
   const [newAccountName, setNewAccountName] = useState('');
   const [newAccountSid, setNewAccountSid] = useState('');
   const [newAuthToken, setNewAuthToken] = useState('');
+  const [newConversationServiceSid, setNewConversationServiceSid] = useState('');
   const [newWebhookUrl, setNewWebhookUrl] = useState('');
   const [newPreWebhookUrl, setNewPreWebhookUrl] = useState('');
   const [editAccountName, setEditAccountName] = useState('');
   const [editAccountSid, setEditAccountSid] = useState('');
   const [editAuthToken, setEditAuthToken] = useState('');
+  const [editConversationServiceSid, setEditConversationServiceSid] = useState('');
   const [editWebhookUrl, setEditWebhookUrl] = useState('');
   const [editPreWebhookUrl, setEditPreWebhookUrl] = useState('');
   const [showNewToken, setShowNewToken] = useState(false);
@@ -39,6 +41,7 @@ export function AccountsManager() {
         account_name: newAccountName.trim(),
         account_sid: newAccountSid.trim(),
         auth_token: newAuthToken.trim(),
+        conversation_service_sid: newConversationServiceSid.trim() || undefined,
         webhook_url: newWebhookUrl.trim() || undefined,
         pre_webhook_url: newPreWebhookUrl.trim() || undefined,
       });
@@ -46,6 +49,7 @@ export function AccountsManager() {
       setNewAccountName('');
       setNewAccountSid('');
       setNewAuthToken('');
+      setNewConversationServiceSid('');
       setNewWebhookUrl('');
       setNewPreWebhookUrl('');
       setIsAdding(false);
@@ -72,6 +76,19 @@ export function AccountsManager() {
     setEditAccountName(account.account_name);
     setEditAccountSid(account.account_sid);
     setEditAuthToken(account.auth_token);
+    // Parse settings to get conversation_service_sid
+    let settings: any = account.settings;
+    if (typeof settings === 'string') {
+      try {
+        settings = JSON.parse(settings);
+      } catch (e) {
+        settings = {};
+      }
+    }
+    if (!settings) {
+      settings = {};
+    }
+    setEditConversationServiceSid(settings?.conversation_service_sid || '');
     setEditWebhookUrl(account.webhook_url || '');
     setEditPreWebhookUrl(account.pre_webhook_url || '');
   };
@@ -82,6 +99,7 @@ export function AccountsManager() {
         account_name: editAccountName.trim(),
         account_sid: editAccountSid.trim(),
         auth_token: editAuthToken.trim(),
+        conversation_service_sid: editConversationServiceSid.trim() || undefined,
         webhook_url: editWebhookUrl.trim() || undefined,
         pre_webhook_url: editPreWebhookUrl.trim() || undefined,
       });
@@ -97,6 +115,7 @@ export function AccountsManager() {
     setEditAccountName('');
     setEditAccountSid('');
     setEditAuthToken('');
+    setEditConversationServiceSid('');
     setEditWebhookUrl('');
     setEditPreWebhookUrl('');
     setShowEditToken(false);
@@ -111,14 +130,6 @@ export function AccountsManager() {
       await deleteAccount(id);
     } catch (error) {
       alert(`Failed to delete account: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  };
-
-  const handleToggleActive = async (account: SenderAccount) => {
-    try {
-      await updateAccount(account.id, { is_active: !account.is_active });
-    } catch (error) {
-      alert(`Failed to update account status: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -233,6 +244,17 @@ export function AccountsManager() {
                 </div>
               </div>
               <div>
+                <label className="block text-gray-700 mb-1">Conversation Service SID <span className="text-gray-500">(optional)</span></label>
+                <input
+                  type="text"
+                  value={newConversationServiceSid}
+                  onChange={(e) => setNewConversationServiceSid(e.target.value)}
+                  placeholder="ISxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="mt-1 text-xs text-gray-500">Twilio Conversation Service SID for this account</p>
+              </div>
+              <div>
                 <label className="block text-gray-700 mb-1">Webhook URL <span className="text-gray-500">(optional)</span></label>
                 <input
                   type="url"
@@ -270,6 +292,7 @@ export function AccountsManager() {
                     setNewAccountName('');
                     setNewAccountSid('');
                     setNewAuthToken('');
+                    setNewConversationServiceSid('');
                     setNewWebhookUrl('');
                     setNewPreWebhookUrl('');
                     setShowNewToken(false);
@@ -339,6 +362,17 @@ export function AccountsManager() {
                           {showEditToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 mb-1">Conversation Service SID <span className="text-gray-500">(optional)</span></label>
+                      <input
+                        type="text"
+                        value={editConversationServiceSid}
+                        onChange={(e) => setEditConversationServiceSid(e.target.value)}
+                        placeholder="ISxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">Twilio Conversation Service SID for this account</p>
                     </div>
                     <div>
                       <label className="block text-gray-700 mb-1">Webhook URL <span className="text-gray-500">(optional)</span></label>
@@ -437,17 +471,6 @@ export function AccountsManager() {
                         >
                           <RefreshCw className={`w-4 h-4 ${syncingAccountId === account.id ? 'animate-spin' : ''}`} />
                           Sync Phones
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleActive(account)}
-                          className={`px-3 py-1.5 rounded-lg transition-colors text-sm ${
-                            account.is_active
-                              ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
-                              : 'bg-green-600 hover:bg-green-700 text-white'
-                          }`}
-                        >
-                          {account.is_active ? 'Deactivate' : 'Activate'}
                         </button>
                         <button
                           type="button"

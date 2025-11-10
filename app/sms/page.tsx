@@ -1,18 +1,30 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MessageSquare, Users, Phone, User, LogOut } from 'lucide-react';
+import { MessageSquare, Users, Phone, User, LogOut, TestTube } from 'lucide-react';
 import ChatPage from '@/components/pages/ChatPage';
 import ContactsPage from '@/components/pages/ContactsPage';
 import AccountsPage from '@/components/pages/AccountsPage';
 import { LoginModal } from '@/components/auth/LoginModal';
 import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export default function SMSPage() {
   const { user, loading, logout, isAuthenticated } = useAuth();
-  const [activeTab, setActiveTab] = useState<'chat' | 'contacts' | 'accounts'>('chat');
+  const pathname = usePathname();
+  const [activeTab, setActiveTab] = useState<'chat' | 'contacts' | 'accounts' | 'api-test'>('chat');
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
   const [showLogin, setShowLogin] = useState(false);
+
+  // Update active tab based on pathname
+  useEffect(() => {
+    if (pathname === '/api-test') {
+      setActiveTab('api-test');
+    } else if (pathname?.startsWith('/sms') || pathname === '/') {
+      // Keep current tab state for SMS page tabs
+    }
+  }, [pathname]);
 
   // Show login modal if not authenticated
   useEffect(() => {
@@ -84,6 +96,17 @@ export default function SMSPage() {
                 <Phone className="w-5 h-5" />
                 <span className="hidden lg:inline">Accounts</span>
               </button>
+              <Link
+                href="/api-test"
+                className={`flex items-center gap-2 px-3 lg:px-4 py-2 rounded-lg transition-colors ${
+                  activeTab === 'api-test'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <TestTube className="w-5 h-5" />
+                <span className="hidden lg:inline">API Test</span>
+              </Link>
             </nav>
 
             {/* User Profile */}
@@ -150,6 +173,16 @@ export default function SMSPage() {
               >
                 <Phone className="w-5 h-5" />
               </button>
+              <Link
+                href="/api-test"
+                className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-colors ${
+                  activeTab === 'api-test'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <TestTube className="w-5 h-5" />
+              </Link>
             </nav>
           </div>
         </div>

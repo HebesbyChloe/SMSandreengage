@@ -94,7 +94,16 @@ export async function apiPut(endpoint: string, data: any, token?: string | null)
   
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || errorData.details || 'Request failed');
+    // Combine error and details if both exist, otherwise use whichever is available
+    let errorMessage = errorData.error || errorData.details || `Request failed with status ${response.status}`;
+    if (errorData.details && errorData.details !== errorData.error) {
+      errorMessage = `${errorMessage}: ${errorData.details}`;
+    }
+    if (errorData.hebesApiError && errorData.hebesApiError !== errorData.details) {
+      errorMessage = `${errorMessage} (Hebes API: ${errorData.hebesApiError})`;
+    }
+    console.error(`API PUT ${endpoint} failed:`, errorMessage, errorData);
+    throw new Error(errorMessage);
   }
   
   return response.json();

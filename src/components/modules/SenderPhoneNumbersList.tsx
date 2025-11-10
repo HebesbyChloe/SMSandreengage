@@ -25,6 +25,7 @@ export function SenderPhoneNumbersList({ accountId }: SenderPhoneNumbersListProp
   }, [accountId]); // Only depend on accountId, not refetch
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
 
   // Form states
   const [newPhoneNumber, setNewPhoneNumber] = useState('');
@@ -89,18 +90,53 @@ export function SenderPhoneNumbersList({ accountId }: SenderPhoneNumbersListProp
   };
 
   const handleSetPrimary = async (id: string) => {
+    // Add to updating set
+    setUpdatingIds(prev => new Set(prev).add(id));
+    
     try {
+      console.log(`🔄 Setting phone ${id} as primary`);
       await setPrimary(id);
+      console.log(`✅ Successfully set phone ${id} as primary`);
     } catch (error) {
-      alert(`Failed to set primary phone: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('❌ Failed to set primary phone:', error);
+      // Refetch to restore the correct state
+      await refetch();
+      alert(`Failed to set primary phone: ${errorMessage}`);
+    } finally {
+      // Remove from updating set
+      setUpdatingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
     }
   };
 
   const handleToggleActive = async (phone: any) => {
+    const newActiveStatus = !phone.is_active;
+    
+    // Add to updating set
+    setUpdatingIds(prev => new Set(prev).add(phone.id));
+    
     try {
-      await updatePhoneNumber(phone.id, { is_active: !phone.is_active });
+      console.log(`🔄 Updating phone ${phone.id} is_active to ${newActiveStatus}`);
+      await updatePhoneNumber(phone.id, { is_active: newActiveStatus });
+      console.log(`✅ Successfully updated phone ${phone.id} is_active to ${newActiveStatus}`);
+      // Note: We don't remove from list - inactive numbers should still be visible
+      // The update will trigger a refetch which will update the UI
     } catch (error) {
+      console.error('❌ Failed to toggle active status:', error);
+      // Refetch to restore the correct state
+      await refetch();
       alert(`Failed to update phone status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      // Remove from updating set
+      setUpdatingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(phone.id);
+        return newSet;
+      });
     }
   };
 
@@ -270,26 +306,30 @@ export function SenderPhoneNumbersList({ accountId }: SenderPhoneNumbersListProp
                   )}
                 </div>
                 <div className="flex items-center gap-1">
-                  {!phone.is_primary && (
-                    <button
-                      type="button"
-                      onClick={() => handleSetPrimary(phone.id)}
-                      className="p-2 text-yellow-600 hover:text-yellow-700"
-                      title="Set as primary"
-                    >
-                      <Star className="w-4 h-4" />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleSetPrimary(phone.id)}
+                    disabled={updatingIds.has(phone.id)}
+                    className={`p-2 transition-colors ${
+                      phone.is_primary
+                        ? 'text-yellow-600 hover:text-yellow-700'
+                        : 'text-gray-400 hover:text-yellow-600'
+                    } ${updatingIds.has(phone.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title={phone.is_primary ? 'Primary (click to change)' : 'Set as primary'}
+                  >
+                    <Star className={`w-4 h-4 ${phone.is_primary ? 'fill-yellow-500' : ''} ${updatingIds.has(phone.id) ? 'animate-pulse' : ''}`} />
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleToggleActive(phone)}
+                    disabled={updatingIds.has(phone.id)}
                     className={`px-3 py-1.5 rounded-lg transition-colors text-xs ${
                       phone.is_active
                         ? 'bg-yellow-100 hover:bg-yellow-200 text-yellow-800'
                         : 'bg-green-100 hover:bg-green-200 text-green-800'
-                    }`}
+                    } ${updatingIds.has(phone.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    {phone.is_active ? 'Deactivate' : 'Activate'}
+                    {updatingIds.has(phone.id) ? 'Updating...' : (phone.is_active ? 'Deactivate' : 'Activate')}
                   </button>
                   <button
                     type="button"

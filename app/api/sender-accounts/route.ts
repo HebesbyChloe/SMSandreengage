@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   try {
     const token = getTokenFromRequest(req);
     const body = await req.json();
-    const { account_name, account_sid, auth_token, webhook_url, pre_webhook_url } = body;
+    const { account_name, account_sid, auth_token, conversation_service_sid, webhook_url, pre_webhook_url } = body;
 
     if (!account_name || !account_sid || !auth_token) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -73,6 +73,9 @@ export async function POST(req: NextRequest) {
 
     // Hebes API uses 'settings' JSON field for additional config
     const settings: any = {};
+    if (conversation_service_sid) {
+      settings.conversation_service_sid = conversation_service_sid;
+    }
     if (webhook_url) {
       settings.callback_url = webhook_url;
     }

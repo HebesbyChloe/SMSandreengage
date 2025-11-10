@@ -90,7 +90,46 @@ export function NewMessagePanel({ onClose, onSent, defaultSenderPhone }: NewMess
         payload.from = defaultSenderPhone;
       }
       
-      await apiPost('/send-sms', payload);
+      const response = await apiPost('/send-sms', payload);
+
+      // Display temporary debugging notifications
+      if (response.notifications) {
+        console.log('📋 Send SMS Notifications:', response.notifications);
+        const notifications = response.notifications;
+        
+        // Log all notifications
+        console.log(notifications.sendFrom);
+        console.log(notifications.conversationStatus || notifications.conversationCreated);
+        console.log(notifications.participantsAdded);
+        if (notifications.isNewConversation !== undefined) {
+          console.log('Is New Conversation:', notifications.isNewConversation ? 'YES' : 'NO (existing)');
+        }
+        if (notifications.conversationId) {
+          console.log(`Conversation ID: ${notifications.conversationId}`);
+        }
+        if (notifications.conversationIdUpdateSuccess) {
+          console.log('✅ Conversation ID update: SUCCESS');
+        } else if (notifications.conversationIdUpdateError) {
+          console.error('❌ Conversation ID update: FAILED -', notifications.conversationIdUpdateError);
+        }
+        console.log(notifications.sendSuccess);
+        
+        // Show notifications in alert for easy viewing (temporary)
+        const notificationText = [
+          notifications.sendFrom,
+          notifications.conversationStatus || notifications.conversationCreated,
+          notifications.participantsAdded,
+          notifications.isNewConversation !== undefined 
+            ? (notifications.isNewConversation ? 'NEW conversation' : 'EXISTING conversation')
+            : '',
+          notifications.conversationId ? `Conversation ID: ${notifications.conversationId}` : '',
+          notifications.conversationIdUpdateSuccess ? 'Conversation ID update: SUCCESS' : 
+            (notifications.conversationIdUpdateError ? `Conversation ID update: FAILED - ${notifications.conversationIdUpdateError}` : ''),
+          notifications.sendSuccess
+        ].filter(Boolean).join('\n');
+        
+        alert(notificationText);
+      }
 
       onSent(phoneNumber.trim());
     } catch (error) {
