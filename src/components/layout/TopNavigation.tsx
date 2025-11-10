@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { MessageSquare, RefreshCw } from 'lucide-react';
+import { MessageSquare, RefreshCw, TestTube } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function TopNavigation() {
@@ -16,6 +16,7 @@ export function TopNavigation() {
 
   const isSMS = pathname?.startsWith('/sms') || pathname === '/';
   const isReEngage = pathname?.startsWith('/reengage');
+  const isAPITest = pathname?.startsWith('/api-test');
 
   return (
     <nav className="bg-white border-b border-gray-200 shadow-sm">
@@ -42,6 +43,17 @@ export function TopNavigation() {
           >
             <RefreshCw className="w-5 h-5" />
             <span>Re-Engage</span>
+          </Link>
+          <Link
+            href="/api-test"
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
+              isAPITest
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+          >
+            <TestTube className="w-5 h-5" />
+            <span>API Test</span>
           </Link>
         </div>
       </div>

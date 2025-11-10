@@ -41,8 +41,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       account_id: accountId,
       phone_number,
       friendly_name: friendly_name || phone_number,
-      is_primary: is_primary || false,
-      is_active: is_active !== undefined ? is_active : true,
+      // Convert boolean to numeric (1/0) for Hebes API compatibility
+      is_primary: (is_primary || false) ? 1 : 0,
+      is_active: (is_active !== undefined ? is_active : true) ? 1 : 0,
     };
 
     const phoneNumber = await hebesSenderPhoneNumbers.create(phoneData, token);
