@@ -70,22 +70,10 @@ export function useSenderAccounts() {
 
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
-        console.log('🔑 Sending request with token:', {
-          hasToken: true,
-          tokenLength: token.length,
-          tokenPrefix: token.substring(0, 20) + '...',
-        });
       } else {
         console.warn('⚠️ No token available for request');
       }
 
-      console.log('📤 Creating sender account:', {
-        account_name: accountData.account_name,
-        account_sid: accountData.account_sid,
-        hasAuthToken: !!accountData.auth_token,
-        hasWebhookUrl: !!accountData.webhook_url,
-        hasPreWebhookUrl: !!accountData.pre_webhook_url,
-      });
 
       const response = await fetch(`${API_BASE_URL}/sender-accounts`, {
         method: 'POST',
@@ -93,11 +81,6 @@ export function useSenderAccounts() {
         body: JSON.stringify(accountData),
       });
 
-      console.log('📥 Response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-      });
 
       if (!response.ok) {
         let errorData: any;
@@ -189,14 +172,12 @@ export function useSenderAccounts() {
       }
 
       const url = `${API_BASE_URL}/sender-accounts/${accountId}/sync-phones`;
-      console.log('🔄 Calling sync endpoint:', url);
 
       const response = await fetch(url, {
         method: 'POST',
         headers,
       });
 
-      console.log('📥 Sync response status:', response.status, response.statusText);
 
       if (!response.ok) {
         let errorData: any;
@@ -213,7 +194,6 @@ export function useSenderAccounts() {
       }
 
       const data = await response.json();
-      console.log('✅ Sync successful, phone numbers:', data.phoneNumbers?.length || 0);
       return data.phoneNumbers || [];
     } catch (err) {
       console.error('❌ Error syncing phone numbers:', err);

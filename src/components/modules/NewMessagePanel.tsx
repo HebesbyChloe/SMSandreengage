@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { X, Send, Search, User, AlertCircle } from 'lucide-react';
-import { apiPost } from '../../lib/api';
+import { sendSMSViaHebesPHP, getStoredToken } from '../../lib/api';
+import { hebesSenderPhoneNumbers } from '../../lib/hebes-api';
+import { formatPhoneNumber } from '../../lib/twilio/client';
 import { useContacts } from '../../hooks/useContacts';
 import { Contact } from '../../types';
 
 interface NewMessagePanelProps {
   onClose: () => void;
-  onSent: (phoneNumber: string) => void;
+  onSent: (phoneNumber: string, conversationId?: string) => void;
   defaultSenderPhone?: string;
 }
 
@@ -76,62 +78,63 @@ export function NewMessagePanel({ onClose, onSent, defaultSenderPhone }: NewMess
     
     if (!phoneNumber.trim() || !message.trim()) return;
 
+    if (!defaultSenderPhone) {
+      setError('No sender phone number selected');
+      return;
+    }
+
     setSending(true);
     setError(null);
 
     try {
-      const payload: any = {
-        to: phoneNumber.trim(),
-        message: message.trim(),
+      const token = getStoredToken();
+      
+      // Format phone numbers
+      const formattedTo = cleanPhoneNumber(phoneNumber.trim());
+      const formattedFrom = cleanPhoneNumber(defaultSenderPhone);
+      
+      // Get account_id from sender phone number (required)
+      let accountId: string | null = null;
+      try {
+        const allPhones = await hebesSenderPhoneNumbers.getAll(token);
+        const phoneNumbersArray = Array.isArray(allPhones) ? allPhones : [];
+        const matchingPhone = phoneNumbersArray.find((p: any) => {
+          const dbPhone = cleanPhoneNumber(p.phone_number || '');
+          return dbPhone === formattedFrom;
+        });
+        
+        if (matchingPhone && matchingPhone.account_id) {
+          accountId = matchingPhone.account_id;
+        }
+      } catch (err) {
+        console.error('Error fetching phone numbers:', err);
+      }
+      
+      if (!accountId) {
+        throw new Error('Account ID not found for sender phone number');
+      }
+      
+      // Call the new PHP API
+      const payload = {
+        to_number: formattedTo,
+        from_number: formattedFrom,
+        body: message.trim(),
+        account_id: accountId,
       };
       
-      // Use the selected sender phone if provided
-      if (defaultSenderPhone) {
-        payload.from = defaultSenderPhone;
-      }
-      
-      const response = await apiPost('/send-sms', payload);
+      const response = await sendSMSViaHebesPHP(payload, token);
 
-      // Display temporary debugging notifications
-      if (response.notifications) {
-        console.log('📋 Send SMS Notifications:', response.notifications);
-        const notifications = response.notifications;
-        
-        // Log all notifications
-        console.log(notifications.sendFrom);
-        console.log(notifications.conversationStatus || notifications.conversationCreated);
-        console.log(notifications.participantsAdded);
-        if (notifications.isNewConversation !== undefined) {
-          console.log('Is New Conversation:', notifications.isNewConversation ? 'YES' : 'NO (existing)');
-        }
-        if (notifications.conversationId) {
-          console.log(`Conversation ID: ${notifications.conversationId}`);
-        }
-        if (notifications.conversationIdUpdateSuccess) {
-          console.log('✅ Conversation ID update: SUCCESS');
-        } else if (notifications.conversationIdUpdateError) {
-          console.error('❌ Conversation ID update: FAILED -', notifications.conversationIdUpdateError);
-        }
-        console.log(notifications.sendSuccess);
-        
-        // Show notifications in alert for easy viewing (temporary)
-        const notificationText = [
-          notifications.sendFrom,
-          notifications.conversationStatus || notifications.conversationCreated,
-          notifications.participantsAdded,
-          notifications.isNewConversation !== undefined 
-            ? (notifications.isNewConversation ? 'NEW conversation' : 'EXISTING conversation')
-            : '',
-          notifications.conversationId ? `Conversation ID: ${notifications.conversationId}` : '',
-          notifications.conversationIdUpdateSuccess ? 'Conversation ID update: SUCCESS' : 
-            (notifications.conversationIdUpdateError ? `Conversation ID update: FAILED - ${notifications.conversationIdUpdateError}` : ''),
-          notifications.sendSuccess
-        ].filter(Boolean).join('\n');
-        
-        alert(notificationText);
+      // Handle response
+      if (response.data && response.data.local_message) {
+        // Extract conversation_sid from response
+        const conversationId = response.data.conversation_sid || 
+                              response.data.twilio_response?.parsed?.conversation_sid ||
+                              response.data.local_message?.conversation_id;
+        setSending(false);
+        onSent(phoneNumber.trim(), conversationId);
+      } else {
+        throw new Error('Unexpected response format');
       }
-
-      onSent(phoneNumber.trim());
     } catch (error) {
       console.error('Error sending message:', error);
       setError(error instanceof Error ? error.message : 'Failed to send message');
@@ -145,6 +148,11 @@ export function NewMessagePanel({ onClose, onSent, defaultSenderPhone }: NewMess
       return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
     }
     return phone;
+  };
+
+  const cleanPhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, '');
+    return `+${cleaned}`;
   };
 
   return (

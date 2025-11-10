@@ -9,7 +9,6 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     const token = getTokenFromRequest(req);
-    console.log('Fetching sender phone numbers from Hebes API...', token ? 'with token' : 'without token');
     const phoneNumbers = await hebesSenderPhoneNumbers.getAll(token);
     
     const phoneNumbersArray = Array.isArray(phoneNumbers) ? phoneNumbers : [phoneNumbers];
@@ -21,7 +20,6 @@ export async function GET(req: NextRequest) {
       return bDate - aDate;
     });
 
-    console.log(`Successfully fetched ${sortedPhones.length} sender phone numbers`);
     return NextResponse.json({ phoneNumbers: sortedPhones }, { status: 200 });
   } catch (error: any) {
     console.error('Exception retrieving sender phone numbers:', error);

@@ -61,7 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       clearTimeout(timeoutId);
       setLoading(false);
-      console.log('✅ Auth initialization complete');
     } catch (error) {
       console.error('❌ Error during auth initialization:', error);
       setLoading(false);
@@ -70,7 +69,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      console.log('🔄 Attempting login for:', email);
       const startTime = Date.now();
       
       const response = await fetch('/api/auth/login', {
@@ -82,7 +80,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       const duration = Date.now() - startTime;
-      console.log(`⏱️ Login API response received in ${duration}ms, status: ${response.status}`);
 
       if (!response.ok) {
         let errorData;
@@ -99,12 +96,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const data = await response.json();
-      console.log('✅ Login response received:', { 
-        hasUser: !!data.user, 
-        hasToken: !!data.token,
-        responseKeys: Object.keys(data),
-        fullResponse: data
-      });
       
       const userData = data.user;
       const authToken = data.token;
@@ -130,12 +121,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('No user data received from login API. The server response did not include user information.');
       }
       
-      console.log('✅ Setting user and token');
       setUser(userData);
       setToken(authToken);
       localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('token', authToken);
-      console.log('✅ Login successful');
     } catch (error) {
       console.error('❌ Login error:', error);
       throw error;

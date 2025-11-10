@@ -12,7 +12,6 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const senderPhoneFilter = searchParams.get('senderPhone');
 
-    console.log('Fetching conversations from Hebes API...', senderPhoneFilter ? `Filter: ${senderPhoneFilter}` : 'No filter', token ? 'with token' : 'without token');
 
     // Get all active sender phone numbers
     const senderPhones = await hebesSenderPhoneNumbers.getAll(token);
@@ -199,7 +198,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    console.log(`Returning ${filteredConversations.length} conversations`);
     return NextResponse.json({ conversations: filteredConversations }, { status: 200 });
   } catch (error: any) {
     console.error('Exception retrieving conversations:', error);

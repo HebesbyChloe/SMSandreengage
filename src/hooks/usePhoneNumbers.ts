@@ -38,13 +38,8 @@ export function usePhoneNumbers(contactId: string | null) {
     if (!contactId) throw new Error('Contact ID is required');
 
     try {
-      console.log('Making API request to add phone number:', {
-        url: `/contacts/${contactId}/phone-numbers`,
-        phoneData
-      });
 
       const data = await apiPost(`/contacts/${contactId}/phone-numbers`, phoneData, token);
-      console.log('Phone number added successfully:', data);
       
       // Refresh the list
       await fetchPhoneNumbers();

@@ -13,7 +13,6 @@ export async function POST(req: Request) {
     }
 
     // Call Hebes Login API with timeout
-    console.log('🔄 Calling Hebes login API...');
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 second timeout
     
@@ -43,7 +42,6 @@ export async function POST(req: Request) {
     let result;
     try {
       result = await response.json();
-      console.log('📦 Login API raw response:', JSON.stringify(result, null, 2));
     } catch (parseError) {
       console.error('❌ Failed to parse login API response:', parseError);
       const text = await response.text();
@@ -91,12 +89,6 @@ export async function POST(req: Request) {
       apiUser = result.user;
     }
 
-    console.log('🔍 Extracted from response:', { 
-      hasToken: !!token, 
-      hasUser: !!apiUser,
-      tokenLength: token?.length || 0,
-      userKeys: apiUser ? Object.keys(apiUser) : []
-    });
 
     if (!token) {
       console.error('❌ No token found in response. Response structure:', {

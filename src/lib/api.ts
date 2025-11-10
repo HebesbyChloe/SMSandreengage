@@ -7,7 +7,7 @@ interface FetchOptions extends RequestInit {
 }
 
 // Get token from localStorage (client-side only)
-function getStoredToken(): string | null {
+export function getStoredToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('token');
 }
@@ -155,4 +155,53 @@ export async function sendSMSWithTwilioSDK(data: {
   }
 
   return response.json();
+}
+
+// Send SMS using Hebes PHP API (send_sms.php)
+export async function sendSMSViaHebesPHP(data: {
+  to_number: string;
+  from_number: string;
+  body: string;
+  account_id: string;
+  media_urls?: string[];
+  messaging_service_sid?: string;
+  metadata?: Record<string, any>;
+}, token?: string | null): Promise<any> {
+  const HEBES_API_BASE = process.env.NEXT_PUBLIC_HEBES_API_BASE || 
+    'https://admin.hebesbychloe.com/wp-content/themes/flatsome-child/backend-dfcflow/twilio';
+  
+  const url = `${HEBES_API_BASE}/send_sms.php`;
+  
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+
+  if (token) {
+    (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+  }
+
+  // Send account_id in body
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(data),
+  });
+
+  const responseText = await response.text();
+  let result: any;
+  
+  try {
+    result = JSON.parse(responseText);
+  } catch (parseError) {
+    throw new Error(`Invalid JSON response: ${responseText.substring(0, 200)}`);
+  }
+
+  if (!response.ok || !result.success) {
+    const errorMessage = typeof result.data === 'string' 
+      ? result.data 
+      : (result.data ? JSON.stringify(result.data) : `HTTP ${response.status}`);
+    throw new Error(errorMessage);
+  }
+
+  return result;
 }

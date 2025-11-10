@@ -58,7 +58,6 @@ export async function POST(request: NextRequest) {
     const numMedia = formData.get('NumMedia') || '0';
     const accountSid = formData.get('AccountSid');
 
-    console.log(`Incoming SMS: From ${from} To ${to} Body: "${messageBody}"`);
 
     // Find sender phone number ID from the 'to' number
     let senderPhoneNumberId = null;
@@ -80,7 +79,6 @@ export async function POST(request: NextRequest) {
 
         // Find or create conversation ID for incoming message
         const conversationId = await findOrCreateConversationId(from || '', senderPhoneNumberId || undefined, token);
-        console.log('📞 Conversation ID for incoming from', from, ':', conversationId || 'NEW');
 
         // Store incoming message with conversation_id
         try {
@@ -106,14 +104,12 @@ export async function POST(request: NextRequest) {
           id: createdMessage.id,
           conversation_id: createdMessage.id,
         }, token);
-        console.log('✅ Created new conversation with ID:', createdMessage.id);
       } else if (conversationId) {
         // Update existing conversation with conversation_id
         await hebesSmsMessages.update({
           id: createdMessage.id,
           conversation_id: conversationId,
         }, token);
-        console.log('✅ Added incoming message to existing conversation:', conversationId);
       }
     } catch (dbError) {
       console.error('Error storing incoming message:', dbError);

@@ -42,19 +42,16 @@ export async function findOrCreateConversationId(
       );
       
       if (messageWithTwilioConversation && messageWithTwilioConversation.conversation_id) {
-        console.log('✅ Found existing Twilio conversation ID:', messageWithTwilioConversation.conversation_id);
         return messageWithTwilioConversation.conversation_id;
       }
       
       // Otherwise, use the conversation_id from the first message
       const firstMessage = existingMessages[0];
       if (firstMessage.conversation_id) {
-        console.log('✅ Found existing conversation ID:', firstMessage.conversation_id);
         return firstMessage.conversation_id;
       }
       
       // If no conversation_id, use the first message's ID as the conversation root
-      console.log('✅ Using first message ID as conversation root:', firstMessage.id);
       return firstMessage.id;
     }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Conversation } from '../types';
-import { apiGet } from '../lib/api';
+import { hebesGetConversations } from '../lib/hebes-api';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface UseConversationsOptions {
@@ -19,16 +19,10 @@ export function useConversations(options: UseConversationsOptions = {}) {
     const isInitialLoad = isInitialLoadRef.current;
     
     try {
-      const url = senderPhoneNumber 
-        ? `/conversations?senderPhone=${encodeURIComponent(senderPhoneNumber)}`
-        : '/conversations';
-      console.log('🔄 Loading conversations from:', url, 'Filter by sender:', senderPhoneNumber || 'ALL', 'Token:', token ? 'present' : 'missing');
-      
       const startTime = Date.now();
-      const data = await apiGet(url, token);
+      const data = await hebesGetConversations(senderPhoneNumber || null, token);
       const duration = Date.now() - startTime;
       
-      console.log(`✅ Loaded conversations in ${duration}ms:`, data.conversations?.length || 0);
       setConversations(data.conversations || []);
       setError(null);
     } catch (error: any) {
@@ -46,7 +40,6 @@ export function useConversations(options: UseConversationsOptions = {}) {
     } finally {
       // Always set loading to false after initial load attempt
       if (isInitialLoad) {
-        console.log('✅ Setting loading to false after initial load');
         setLoading(false);
         isInitialLoadRef.current = false;
       }
@@ -54,7 +47,6 @@ export function useConversations(options: UseConversationsOptions = {}) {
   }, [senderPhoneNumber, token]);
 
   useEffect(() => {
-    console.log('🔄 useConversations effect triggered', { senderPhoneNumber, hasToken: !!token });
     isInitialLoadRef.current = true;
     setLoading(true);
     loadConversations(false);
@@ -81,11 +73,8 @@ export function useConversations(options: UseConversationsOptions = {}) {
   
   const reload = useCallback(async () => {
     isInitialLoadRef.current = false; // Don't show loading on manual reload
-    const url = senderPhoneNumber 
-      ? `/conversations?senderPhone=${encodeURIComponent(senderPhoneNumber)}`
-      : '/conversations';
     try {
-      const data = await apiGet(url, token);
+      const data = await hebesGetConversations(senderPhoneNumber || null, token);
       setConversations(data.conversations || []);
       setError(null);
     } catch (error) {

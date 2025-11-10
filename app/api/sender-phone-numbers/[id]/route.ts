@@ -66,35 +66,22 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (body.account_id !== undefined) updateData.account_id = body.account_id;
     if (body.assigned_to !== undefined) updateData.assigned_to = body.assigned_to;
 
-    console.log('📝 Updating sender phone number:', { 
-      id, 
-      updateData, 
-      method: 'PUT',
-      existingRecord: { 
-        phone_number: existingRecord.phone_number,
-        is_active: existingRecord.is_active,
-        is_primary: existingRecord.is_primary 
-      }
-    });
     
     // Store a copy for potential restore
     const recordBeforeUpdate = { ...existingRecord };
     
     // Perform the update
     const phoneNumber = await hebesSenderPhoneNumbers.update(updateData, token);
-    console.log('✅ Update API call successful, response:', phoneNumber);
     
     // Verify the record still exists after update
     let recordAfterUpdate;
     try {
       recordAfterUpdate = await hebesSenderPhoneNumbers.getById(id, token);
-      console.log('✅ Record still exists after update:', { id, phone_number: recordAfterUpdate?.phone_number, is_active: recordAfterUpdate?.is_active, is_primary: recordAfterUpdate?.is_primary });
     } catch (err) {
       console.error('❌ CRITICAL: Record was DELETED during update!', { id, error: err });
       
       // Try to restore the record by creating it again with updated values
       try {
-        console.log('🔄 Attempting to restore deleted record...');
         const restoreData = {
           ...existingRecord,
           ...updateData,
@@ -104,7 +91,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         
         // Try to create with the same data
         const restored = await hebesSenderPhoneNumbers.create(restoreData, token);
-        console.log('✅ Record restored:', restored);
         
         return NextResponse.json({ 
           error: 'Record was deleted during update but has been restored', 

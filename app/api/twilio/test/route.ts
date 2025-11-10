@@ -75,7 +75,6 @@ export async function POST(req: NextRequest) {
           conversations = await twilioClient.conversations.v1.conversations.list({ limit });
         }
         
-        console.log(`🔍 Searching for phone ${phoneNumber} in ${conversations.length} conversations`);
         
         // Search through conversations to find ones with matching participant
         const matchingConversations: any[] = [];

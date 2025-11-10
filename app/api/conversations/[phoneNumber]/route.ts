@@ -8,7 +8,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { phoneNumb
     const token = getTokenFromRequest(req);
     const phoneNumberOrConversationId = decodeURIComponent(params.phoneNumber);
 
-    console.log(`Deleting conversation: ${phoneNumberOrConversationId}`, token ? 'with token' : 'without token');
 
     // Get all messages
     const allMessages = await hebesSmsMessages.getAll(token);
@@ -32,7 +31,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { phoneNumb
       return false;
     });
 
-    console.log(`Found ${messagesToDelete.length} messages to delete`);
 
     // Delete each message
     let deletedCount = 0;
@@ -46,7 +44,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { phoneNumb
       }
     }
 
-    console.log(`Successfully deleted ${deletedCount} messages`);
     return NextResponse.json({ 
       success: true, 
       message: 'Conversation deleted successfully',

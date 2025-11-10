@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { hebesSmsMessages } from '@/lib/hebes-api';
 import { getTokenFromRequest } from '@/lib/api-helpers';
 
-// GET - Get messages for a specific conversation ID or phone number (backward compatibility)
+// GET - Get messages for a specific conversation ID or phone number
+// This route proxies directly to PHP API: sms_messages.php
 export async function GET(req: NextRequest, { params }: { params: { phoneNumber: string } }) {
   try {
     const token = getTokenFromRequest(req);
@@ -11,54 +11,76 @@ export async function GET(req: NextRequest, { params }: { params: { phoneNumber:
     const senderPhone = searchParams.get('senderPhone');
     const useConversationId = searchParams.get('useConversationId') === 'true';
 
-    console.log(`Fetching messages for ${phoneNumberOrConversationId}`, senderPhone ? `(sender: ${senderPhone})` : '', useConversationId ? '(by conversation_id)' : '(by phone)', token ? 'with token' : 'without token');
-
-    let filteredMessages: any[] = [];
-
+    // Build PHP API URL
+    const HEBES_API_BASE = process.env.NEXT_PUBLIC_HEBES_API_BASE || 
+      'https://admin.hebesbychloe.com/wp-content/themes/flatsome-child/backend-dfcflow/twilio';
+    
+    let phpApiUrl = `${HEBES_API_BASE}/sms_messages.php`;
+    
+    // Add query parameters based on request type
     if (useConversationId) {
-      // Fetch messages by conversation_id
-      try {
-        filteredMessages = await hebesSmsMessages.getByConversation(phoneNumberOrConversationId, token);
-        if (!Array.isArray(filteredMessages)) {
-          filteredMessages = [];
-        }
-      } catch (error) {
-        console.error('Error fetching messages by conversation_id:', error);
-        filteredMessages = [];
-      }
+      // Fetch by conversation_id
+      phpApiUrl += `?conversation_id=${encodeURIComponent(phoneNumberOrConversationId)}`;
     } else {
-      // Legacy: Filter messages for this phone number (backward compatibility)
-      const allMessages = await hebesSmsMessages.getAll(token);
-      const messagesArray = Array.isArray(allMessages) ? allMessages : [];
+      // Legacy: Fetch by phone number
+      // PHP API should handle filtering by phone number
+      phpApiUrl += `?phone_number=${encodeURIComponent(phoneNumberOrConversationId)}`;
+    }
+    
+    // Add sender phone filter if provided
+    if (senderPhone) {
+      phpApiUrl += `&sender_phone=${encodeURIComponent(senderPhone)}`;
+    }
 
-      // Filter messages for this phone number
-      filteredMessages = messagesArray.filter((msg: any) => {
-        const isInbound = msg.direction === 'inbound' && msg.from_number === phoneNumberOrConversationId;
-        const isOutbound = msg.direction === 'outbound' && msg.to_number === phoneNumberOrConversationId;
-        return isInbound || isOutbound;
-      });
+    // Call PHP API directly
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
 
-      // Filter by sender phone if specified
-      if (senderPhone) {
-        filteredMessages = filteredMessages.filter((msg: any) => {
-          if (msg.direction === 'outbound') {
-            return msg.from_number === senderPhone;
-          } else {
-            return msg.to_number === senderPhone;
-          }
-        });
-      }
+    if (token) {
+      (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(phpApiUrl, {
+      method: 'GET',
+      headers,
+    });
+
+    const responseText = await response.text();
+    let result: any;
+    
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response from PHP API: ${responseText.substring(0, 200)}`);
+    }
+
+    if (!response.ok || !result.success) {
+      const errorMessage = typeof result.data === 'string' 
+        ? result.data 
+        : (result.data ? JSON.stringify(result.data) : `HTTP ${response.status}`);
+      throw new Error(errorMessage);
+    }
+
+    // PHP API returns data in result.data (could be array or object with messages array)
+    let messages = [];
+    if (Array.isArray(result.data)) {
+      messages = result.data;
+    } else if (result.data && Array.isArray(result.data.messages)) {
+      messages = result.data.messages;
+    } else if (result.data && Array.isArray(result.data.data)) {
+      messages = result.data.data;
     }
 
     // Sort by timestamp (oldest first)
-    filteredMessages.sort((a: any, b: any) => {
+    messages.sort((a: any, b: any) => {
       const timeA = new Date(a.received_at || a.sent_at || a.created_at || 0).getTime();
       const timeB = new Date(b.received_at || b.sent_at || b.created_at || 0).getTime();
       return timeA - timeB;
     });
 
     // Map to expected format
-    const messages = filteredMessages.map((msg: any) => ({
+    const formattedMessages = messages.map((msg: any) => ({
       id: msg.id,
       direction: msg.direction,
       from: msg.from_number,
@@ -70,8 +92,7 @@ export async function GET(req: NextRequest, { params }: { params: { phoneNumber:
       providerMessageSid: msg.provider_message_sid,
     }));
 
-    console.log(`Returning ${messages.length} messages for ${phoneNumberOrConversationId}`);
-    return NextResponse.json({ messages }, { status: 200 });
+    return NextResponse.json({ messages: formattedMessages }, { status: 200 });
   } catch (error: any) {
     console.error('Exception retrieving messages:', error);
     return NextResponse.json({ 

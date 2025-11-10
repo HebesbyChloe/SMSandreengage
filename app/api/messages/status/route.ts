@@ -51,7 +51,6 @@ export async function PUT(req: NextRequest) {
     const now = new Date().toISOString();
     if (status === 'delivered') {
       updateData.delivered_at = now;
-      console.log('✅ Message delivered:', messageSid);
     } else if (status === 'failed' || status === 'undelivered') {
       updateData.failed_at = now;
       console.error('❌ Message failed/undelivered:', messageSid, {
@@ -60,7 +59,6 @@ export async function PUT(req: NextRequest) {
         errorMessage
       });
     } else if (status === 'sent') {
-      console.log('📤 Message sent (awaiting delivery):', messageSid);
     }
 
     const updatedMessage = await hebesSmsMessages.update(updateData, token);

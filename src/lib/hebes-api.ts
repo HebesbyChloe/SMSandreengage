@@ -17,7 +17,7 @@ interface HebesResponse<T> {
 /**
  * Generic API request handler for Hebes Admin API
  */
-async function hebesRequest<T>(
+export async function hebesRequest<T>(
   endpoint: string,
   options: RequestInit = {},
   token?: string | null
@@ -56,16 +56,6 @@ async function hebesRequest<T>(
   }
 
   // Log the full response for debugging
-  console.log(`Hebes API response for ${url}:`, {
-    status: response.status,
-    success: result.success,
-    hasData: !!result.data,
-    dataType: typeof result.data,
-    dataPreview: typeof result.data === 'object' && result.data !== null 
-      ? Object.keys(result.data).slice(0, 10) 
-      : result.data,
-    fullResult: result,
-  });
 
   // Check HTTP status first
   if (!response.ok && response.status !== 200) {
@@ -108,12 +98,6 @@ export async function hebesGet<T>(endpoint: string, token?: string | null): Prom
  * POST request to Hebes API
  */
 export async function hebesPost<T>(endpoint: string, data: any, token?: string | null): Promise<T> {
-  console.log(`[hebesPost] Calling ${endpoint} with:`, {
-    hasToken: !!token,
-    tokenLength: token?.length || 0,
-    dataKeys: Object.keys(data),
-    dataPreview: { ...data, auth_token: data.auth_token ? '***' : undefined },
-  });
   
   try {
     const result = await hebesRequest<T>(endpoint, {
@@ -121,7 +105,6 @@ export async function hebesPost<T>(endpoint: string, data: any, token?: string |
       body: JSON.stringify(data),
     }, token);
     
-    console.log(`[hebesPost] Success for ${endpoint}:`, result);
     return result;
   } catch (error: any) {
     console.error(`[hebesPost] Error for ${endpoint}:`, {
@@ -213,6 +196,22 @@ export const hebesConversationMeta = {
   update: (data: any, token?: string | null) => hebesPut<any>('conversation_meta.php', data, token),
   delete: (id: string, token?: string | null) => hebesDelete<any>('conversation_meta.php', id, token),
 };
+
+/**
+ * Conversations API - Get all conversations
+ */
+export async function hebesGetConversations(
+  senderPhone?: string | null,
+  token?: string | null
+): Promise<{ conversations: any[] }> {
+  const queryParams = new URLSearchParams();
+  if (senderPhone) {
+    queryParams.append('senderPhone', senderPhone);
+  }
+  const queryString = queryParams.toString();
+  const endpoint = queryString ? `conversations.php?${queryString}` : 'conversations.php';
+  return hebesGet<{ conversations: any[] }>(endpoint, token);
+}
 
 /**
  * Users API

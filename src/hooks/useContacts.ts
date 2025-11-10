@@ -29,9 +29,7 @@ export function useContacts() {
 
   const createContact = async (contactData: Partial<Contact>) => {
     try {
-      console.log('🔄 Creating contact:', { name: contactData.name, phone: contactData.phone });
       const data = await apiPost('/contacts', contactData, token);
-      console.log('✅ Contact created:', data.contact);
       await loadContacts();
       return data.contact;
     } catch (error: any) {

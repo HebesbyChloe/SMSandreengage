@@ -19,7 +19,6 @@ async function getAccountIdFromPhone(senderPhoneNumberId: string, token?: string
 }
 
 export async function POST(request: NextRequest) {
-  console.log('vào 2');
   try {
     const body = await request.json();
     const { to, from, message, senderPhoneNumberId } = body;
@@ -63,7 +62,6 @@ export async function POST(request: NextRequest) {
     const formattedFrom = formatPhoneNumber(from);
 
     // Find or create Twilio Conversation SID (unified way)
-    console.log('📞 Finding or creating Twilio conversation for', formattedTo);
     const twilioConversationSid = await findOrCreateTwilioConversation(
       formattedTo,
       senderPhoneNumberId,
@@ -71,14 +69,11 @@ export async function POST(request: NextRequest) {
     );
 
     if (twilioConversationSid) {
-      console.log('✅ Using Twilio conversation SID:', twilioConversationSid);
     } else {
-      console.log('⚠️ No Twilio conversation SID - will send directly to phone number');
     }
 
     // Also get local conversation ID for database tracking
     const localConversationId = await findOrCreateConversationId(formattedTo, senderPhoneNumberId, token);
-    console.log('📞 Local conversation ID for', formattedTo, ':', localConversationId || 'NEW');
 
     // Prepare data for Hebes Backend API
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -96,23 +91,15 @@ export async function POST(request: NextRequest) {
     // Add Twilio conversation SID if available (unified way - send via conversation)
     if (twilioConversationSid) {
       sendData.conversation_sid = twilioConversationSid;
-      console.log('📤 Sending via Twilio Conversation SID:', twilioConversationSid);
     } else if (localConversationId) {
       // Fallback to local conversation ID if Twilio conversation not available
       sendData.conversation_sid = localConversationId;
-      console.log('📤 Sending with local conversation ID:', localConversationId);
     }
     
-    console.log('📤 Sending SMS with status callback:', statusCallbackUrl);
 
     // Call Hebes Backend API to send SMS
-    console.log(`📡 Calling Hebes Backend API: send_sms_test.php`);
     const result = await hebesSendSMS(sendData, token);
 
-    console.log('✅ SMS sent successfully:', {
-      messageSid: result.data.twilio_response.parsed.sid,
-      status: result.data.twilio_response.parsed.status,
-    });
 
     // Ensure conversation_id is stored in the database
     // The Hebes API might not store conversation_sid in conversation_id field
@@ -122,10 +109,6 @@ export async function POST(request: NextRequest) {
       
       if (conversationIdToStore) {
         try {
-          console.log('📝 Updating message conversation_id:', {
-            messageId: messageId,
-            conversationId: conversationIdToStore
-          });
           
           // Update the message to set conversation_id
           await hebesSmsMessages.update({
@@ -133,7 +116,6 @@ export async function POST(request: NextRequest) {
             conversation_id: conversationIdToStore,
           }, token);
           
-          console.log('✅ Updated message conversation_id in database');
         } catch (updateError: any) {
           console.error('⚠️ Failed to update message conversation_id:', updateError.message);
           // Don't fail the request if update fails - message was sent successfully

@@ -6,7 +6,6 @@ import { getTokenFromRequest } from '@/lib/api-helpers';
 export async function GET(req: NextRequest) {
   try {
     const token = getTokenFromRequest(req);
-    console.log('Fetching contacts from Hebes API...', token ? 'with token' : 'without token');
     const contacts = await hebesContacts.getAll(token);
     
     // Hebes API returns array directly in data
@@ -19,7 +18,6 @@ export async function GET(req: NextRequest) {
       return bDate - aDate;
     });
 
-    console.log(`Successfully fetched ${sortedContacts.length} contacts`);
     return NextResponse.json({ contacts: sortedContacts }, { status: 200 });
   } catch (error: any) {
     console.error('Exception retrieving contacts:', error);
@@ -75,11 +73,9 @@ export async function POST(req: NextRequest) {
       assigned_phone_number_id: assigned_phone_number_id || null,
     };
 
-    console.log('Creating contact with data:', contactData, token ? 'with token' : 'without token');
     
     try {
       const contact = await hebesContacts.create(contactData, token);
-      console.log('✅ Contact created successfully:', contact);
       return NextResponse.json({ contact, success: true }, { status: 200 });
     } catch (apiError: any) {
       console.error('❌ Hebes API error creating contact:', apiError);

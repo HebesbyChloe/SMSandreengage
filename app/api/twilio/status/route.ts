@@ -44,11 +44,6 @@ export async function POST(request: NextRequest) {
     const errorMessage = formData.get('ErrorMessage');
 
     // Twilio status values: queued, sending, sent, failed, delivered, undelivered, received
-    console.log(`📊 Twilio Status Update: ${messageSid} -> ${status}`, {
-      errorCode: errorCode || 'none',
-      errorMessage: errorMessage || 'none',
-      timestamp: new Date().toISOString()
-    });
     
     // Log failures prominently
     if (status === 'failed' || status === 'undelivered') {

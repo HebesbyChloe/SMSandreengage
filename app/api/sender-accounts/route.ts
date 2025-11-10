@@ -6,7 +6,6 @@ import { getTokenFromRequest } from '@/lib/api-helpers';
 export async function GET(req: NextRequest) {
   try {
     const token = getTokenFromRequest(req);
-    console.log('Fetching sender accounts from Hebes API...', token ? 'with token' : 'without token');
     const accounts = await hebesSenderAccounts.getAll(token);
     
     // Hebes API returns array directly in data, but we need to handle both single object and array
@@ -19,7 +18,6 @@ export async function GET(req: NextRequest) {
       return bDate - aDate;
     });
 
-    console.log(`Successfully fetched ${sortedAccounts.length} sender accounts`);
     return NextResponse.json({ accounts: sortedAccounts }, { status: 200 });
   } catch (error: any) {
     console.error('Exception retrieving sender accounts:', error);
@@ -88,16 +86,9 @@ export async function POST(req: NextRequest) {
       accountData.settings = settings;
     }
 
-    console.log('Creating sender account with data:', { 
-      ...accountData, 
-      auth_token: '***',
-      hasToken: !!token,
-      tokenLength: token?.length || 0,
-    });
     
     try {
       const account = await hebesSenderAccounts.create(accountData, token);
-      console.log('Account created successfully:', account);
       
       return NextResponse.json({ account, success: true }, { status: 200 });
     } catch (createError: any) {

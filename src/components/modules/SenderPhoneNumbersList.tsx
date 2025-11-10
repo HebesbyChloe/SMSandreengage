@@ -94,9 +94,7 @@ export function SenderPhoneNumbersList({ accountId }: SenderPhoneNumbersListProp
     setUpdatingIds(prev => new Set(prev).add(id));
     
     try {
-      console.log(`🔄 Setting phone ${id} as primary`);
       await setPrimary(id);
-      console.log(`✅ Successfully set phone ${id} as primary`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('❌ Failed to set primary phone:', error);
@@ -120,9 +118,7 @@ export function SenderPhoneNumbersList({ accountId }: SenderPhoneNumbersListProp
     setUpdatingIds(prev => new Set(prev).add(phone.id));
     
     try {
-      console.log(`🔄 Updating phone ${phone.id} is_active to ${newActiveStatus}`);
       await updatePhoneNumber(phone.id, { is_active: newActiveStatus });
-      console.log(`✅ Successfully updated phone ${phone.id} is_active to ${newActiveStatus}`);
       // Note: We don't remove from list - inactive numbers should still be visible
       // The update will trigger a refetch which will update the UI
     } catch (error) {

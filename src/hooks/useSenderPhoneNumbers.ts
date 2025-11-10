@@ -23,7 +23,6 @@ export function useSenderPhoneNumbers(accountId: string | null) {
       const data = await apiGet(`/sender-accounts/${accountId}/phone-numbers`, token);
       const phones = data.phoneNumbers || [];
       setPhoneNumbers(phones);
-      console.log(`✅ Fetched ${phones.length} phone numbers for account ${accountId}`);
     } catch (err) {
       console.error('Error fetching phone numbers:', err);
       setError(err instanceof Error ? err.message : 'Failed to load phone numbers');

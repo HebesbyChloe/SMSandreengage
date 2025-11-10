@@ -46,7 +46,6 @@ export default function ChatPage({ initialSelectedPhone }: ChatPageProps) {
   useEffect(() => {
     if (senderPhones.length > 0 && !selectedSenderPhone) {
       const primaryPhone = senderPhones.find(p => p.is_primary) || senderPhones[0];
-      console.log('📱 Auto-selecting sender phone for SENDING:', primaryPhone.phone_number);
       setSelectedSenderPhone(primaryPhone.phone_number);
     }
   }, [senderPhones]);
@@ -60,27 +59,34 @@ export default function ChatPage({ initialSelectedPhone }: ChatPageProps) {
 
   // Log conversations changes for debugging
   useEffect(() => {
-    console.log('💬 Conversations updated in ChatPage:', conversations.length, 'conversations');
-    console.log('Phone numbers:', conversations.map(c => c.phoneNumber));
   }, [conversations]);
 
-  const handleNewConversation = (phoneNumber: string) => {
+  const handleNewConversation = async (phoneNumber: string, conversationId?: string) => {
     setShowNewMessage(false);
     // Find or create conversation for this phone number
     const existingConv = conversations.find(c => c.phoneNumber === phoneNumber);
     if (existingConv) {
-      setSelectedConversation(existingConv);
+      // Update conversation with new conversationId if provided
+      if (conversationId && conversationId !== existingConv.conversationId) {
+        setSelectedConversation({
+          ...existingConv,
+          conversationId,
+        });
+      } else {
+        setSelectedConversation(existingConv);
+      }
     } else {
-      // Create a temporary conversation object for new conversations
-      // The conversation_id will be created when the first message is sent
+      // Create a conversation object with the conversation_id from API response
       setSelectedConversation({
-        conversationId: '', // Will be set when first message is sent
+        conversationId: conversationId || '', // Use conversation_id from API response
         phoneNumber,
         senderPhones: selectedSenderPhone ? [selectedSenderPhone] : [],
       });
     }
     setShowMobileThread(true);
-    reload();
+    // Add a small delay to ensure the message is saved in the database before reloading
+    await new Promise(resolve => setTimeout(resolve, 500));
+    await reload();
   };
 
   const handleBackToList = () => {
@@ -318,7 +324,11 @@ export default function ChatPage({ initialSelectedPhone }: ChatPageProps) {
         {selectedConversation ? (
           <MessageThread
             phoneNumber={selectedConversation}
-            onMessageSent={reload}
+            onMessageSent={() => {
+              reload();
+              // Force reload messages by updating the conversation reference
+              setSelectedConversation({ ...selectedConversation });
+            }}
             onShowDetails={handleShowDetails}
             defaultSenderPhone={selectedSenderPhone || undefined}
           />

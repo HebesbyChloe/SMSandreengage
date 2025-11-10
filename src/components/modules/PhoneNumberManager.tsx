@@ -56,12 +56,6 @@ export function PhoneNumberManager({
     }
     
     try {
-      console.log('Adding phone number:', { 
-        phone_number: newPhone.trim(), 
-        type: newType, 
-        is_verified: false,
-        contactId 
-      });
       
       await onAdd({
         phone_number: newPhone.trim(),
@@ -69,7 +63,6 @@ export function PhoneNumberManager({
         is_verified: false
       });
       
-      console.log('Phone number added successfully');
       setNewPhone('');
       setNewType('mobile');
       setIsAdding(false);

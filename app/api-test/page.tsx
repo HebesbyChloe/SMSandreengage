@@ -2,8 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import { Play, Copy, Check, AlertCircle } from 'lucide-react';
-import { apiPost, apiGet } from '@/lib/api';
+import { apiGet } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  hebesCreateConversation,
+  hebesListConversations,
+  hebesFindConversationByPhone,
+  hebesGetConversation,
+  hebesAddParticipant,
+  hebesListParticipants,
+  hebesSendMessage,
+  hebesListMessages,
+  hebesListServices,
+  hebesRemoveParticipant,
+  hebesDeleteMessage,
+  hebesDeleteConversation,
+} from '@/lib/hebes-api-twilio';
 
 interface TwilioEndpoint {
   id: string;
@@ -29,10 +43,9 @@ const twilioEndpoints: TwilioEndpoint[] = [
     method: 'POST',
     endpoint: '/api/twilio/test/create-conversation',
     inputs: [
-      { name: 'accountSid', label: 'Account SID', type: 'text', placeholder: 'AC...', required: true },
-      { name: 'authToken', label: 'Auth Token', type: 'password', placeholder: 'Your auth token', required: true },
-      { name: 'friendlyName', label: 'Friendly Name', type: 'text', placeholder: 'Conversation with +1234567890', required: false },
-      { name: 'conversationServiceSid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'If not provided, uses default service' },
+      { name: 'account_id', label: 'Account ID', type: 'text', placeholder: 'Account ID from database', required: true },
+      { name: 'friendly_name', label: 'Friendly Name', type: 'text', placeholder: 'Conversation with +1234567890', required: false },
+      { name: 'conversation_service_sid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'If not provided, uses default service' },
     ],
   },
   {
@@ -42,9 +55,8 @@ const twilioEndpoints: TwilioEndpoint[] = [
     method: 'GET',
     endpoint: '/api/twilio/test/list-conversations',
     inputs: [
-      { name: 'accountSid', label: 'Account SID', type: 'text', placeholder: 'AC...', required: true },
-      { name: 'authToken', label: 'Auth Token', type: 'password', placeholder: 'Your auth token', required: true },
-      { name: 'conversationServiceSid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Filter by conversation service. If not provided, lists all conversations.' },
+      { name: 'account_id', label: 'Account ID', type: 'text', placeholder: 'Account ID from database', required: true },
+      { name: 'conversation_service_sid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Filter by conversation service. If not provided, lists all conversations.' },
       { name: 'limit', label: 'Limit', type: 'number', placeholder: '20', required: false },
     ],
   },
@@ -55,10 +67,9 @@ const twilioEndpoints: TwilioEndpoint[] = [
     method: 'GET',
     endpoint: '/api/twilio/test/find-conversation-by-phone',
     inputs: [
-      { name: 'accountSid', label: 'Account SID', type: 'text', placeholder: 'AC...', required: true },
-      { name: 'authToken', label: 'Auth Token', type: 'password', placeholder: 'Your auth token', required: true },
-      { name: 'phoneNumber', label: 'Phone Number', type: 'text', placeholder: '+1234567890', required: true, description: 'Phone number to search for (must include country code, e.g., +1)' },
-      { name: 'conversationServiceSid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Search within a specific conversation service. If not provided, searches all services.' },
+      { name: 'account_id', label: 'Account ID', type: 'text', placeholder: 'Account ID from database', required: true },
+      { name: 'phone_number', label: 'Phone Number', type: 'text', placeholder: '+1234567890', required: true, description: 'Phone number to search for (must include country code, e.g., +1)' },
+      { name: 'conversation_service_sid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Search within a specific conversation service. If not provided, searches all services.' },
       { name: 'limit', label: 'Search Limit', type: 'number', placeholder: '100', required: false, description: 'Max number of conversations to check (default: 100)' },
     ],
   },
@@ -69,10 +80,9 @@ const twilioEndpoints: TwilioEndpoint[] = [
     method: 'GET',
     endpoint: '/api/twilio/test/get-conversation',
     inputs: [
-      { name: 'accountSid', label: 'Account SID', type: 'text', placeholder: 'AC...', required: true },
-      { name: 'authToken', label: 'Auth Token', type: 'password', placeholder: 'Your auth token', required: true },
-      { name: 'conversationSid', label: 'Conversation SID', type: 'text', placeholder: 'CH...', required: true },
-      { name: 'conversationServiceSid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Optional: Service SID for reference (not required when conversation SID is provided)' },
+      { name: 'account_id', label: 'Account ID', type: 'text', placeholder: 'Account ID from database', required: true },
+      { name: 'conversation_sid', label: 'Conversation SID', type: 'text', placeholder: 'CH...', required: true },
+      { name: 'conversation_service_sid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Optional: Service SID for reference (not required when conversation SID is provided)' },
     ],
   },
   {
@@ -82,12 +92,11 @@ const twilioEndpoints: TwilioEndpoint[] = [
     method: 'POST',
     endpoint: '/api/twilio/test/add-participant',
     inputs: [
-      { name: 'accountSid', label: 'Account SID', type: 'text', placeholder: 'AC...', required: true },
-      { name: 'authToken', label: 'Auth Token', type: 'password', placeholder: 'Your auth token', required: true },
-      { name: 'conversationSid', label: 'Conversation SID', type: 'text', placeholder: 'CH...', required: true },
+      { name: 'account_id', label: 'Account ID', type: 'text', placeholder: 'Account ID from database', required: true },
+      { name: 'conversation_sid', label: 'Conversation SID', type: 'text', placeholder: 'CH...', required: true },
       { name: 'address', label: 'Participant Address (phone)', type: 'text', placeholder: '+1234567890', required: true },
-      { name: 'proxyAddress', label: 'Proxy Address (sender phone)', type: 'text', placeholder: '+1234567890', required: true },
-      { name: 'conversationServiceSid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Optional: Service SID for reference (not required when conversation SID is provided)' },
+      { name: 'proxy_address', label: 'Proxy Address (sender phone)', type: 'text', placeholder: '+1234567890', required: true },
+      { name: 'conversation_service_sid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Optional: Service SID for reference (not required when conversation SID is provided)' },
     ],
   },
   {
@@ -97,10 +106,9 @@ const twilioEndpoints: TwilioEndpoint[] = [
     method: 'GET',
     endpoint: '/api/twilio/test/list-participants',
     inputs: [
-      { name: 'accountSid', label: 'Account SID', type: 'text', placeholder: 'AC...', required: true },
-      { name: 'authToken', label: 'Auth Token', type: 'password', placeholder: 'Your auth token', required: true },
-      { name: 'conversationSid', label: 'Conversation SID', type: 'text', placeholder: 'CH...', required: true },
-      { name: 'conversationServiceSid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Optional: Service SID for reference (not required when conversation SID is provided)' },
+      { name: 'account_id', label: 'Account ID', type: 'text', placeholder: 'Account ID from database', required: true },
+      { name: 'conversation_sid', label: 'Conversation SID', type: 'text', placeholder: 'CH...', required: true },
+      { name: 'conversation_service_sid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Optional: Service SID for reference (not required when conversation SID is provided)' },
     ],
   },
   {
@@ -110,12 +118,11 @@ const twilioEndpoints: TwilioEndpoint[] = [
     method: 'POST',
     endpoint: '/api/twilio/test/send-message',
     inputs: [
-      { name: 'accountSid', label: 'Account SID', type: 'text', placeholder: 'AC...', required: true },
-      { name: 'authToken', label: 'Auth Token', type: 'password', placeholder: 'Your auth token', required: true },
-      { name: 'conversationSid', label: 'Conversation SID', type: 'text', placeholder: 'CH...', required: true },
+      { name: 'account_id', label: 'Account ID', type: 'text', placeholder: 'Account ID from database', required: true },
+      { name: 'conversation_sid', label: 'Conversation SID', type: 'text', placeholder: 'CH...', required: true },
       { name: 'body', label: 'Message Body', type: 'textarea', placeholder: 'Your message text', required: true },
       { name: 'author', label: 'Author (phone)', type: 'text', placeholder: '+1234567890', required: false },
-      { name: 'conversationServiceSid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Optional: Service SID for reference (not required when conversation SID is provided)' },
+      { name: 'conversation_service_sid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Optional: Service SID for reference (not required when conversation SID is provided)' },
     ],
   },
   {
@@ -125,11 +132,10 @@ const twilioEndpoints: TwilioEndpoint[] = [
     method: 'GET',
     endpoint: '/api/twilio/test/list-messages',
     inputs: [
-      { name: 'accountSid', label: 'Account SID', type: 'text', placeholder: 'AC...', required: true },
-      { name: 'authToken', label: 'Auth Token', type: 'password', placeholder: 'Your auth token', required: true },
-      { name: 'conversationSid', label: 'Conversation SID', type: 'text', placeholder: 'CH...', required: true },
+      { name: 'account_id', label: 'Account ID', type: 'text', placeholder: 'Account ID from database', required: true },
+      { name: 'conversation_sid', label: 'Conversation SID', type: 'text', placeholder: 'CH...', required: true },
       { name: 'limit', label: 'Limit', type: 'number', placeholder: '20', required: false },
-      { name: 'conversationServiceSid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Optional: Service SID for reference (not required when conversation SID is provided)' },
+      { name: 'conversation_service_sid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Optional: Service SID for reference (not required when conversation SID is provided)' },
     ],
   },
   {
@@ -139,9 +145,8 @@ const twilioEndpoints: TwilioEndpoint[] = [
     method: 'GET',
     endpoint: '/api/twilio/test/list-services',
     inputs: [
-      { name: 'accountSid', label: 'Account SID', type: 'text', placeholder: 'AC...', required: true },
-      { name: 'authToken', label: 'Auth Token', type: 'password', placeholder: 'Your auth token', required: true },
-      { name: 'conversationServiceSid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Optional: Not used by this endpoint, but available for reference' },
+      { name: 'account_id', label: 'Account ID', type: 'text', placeholder: 'Account ID from database', required: true },
+      { name: 'conversation_service_sid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Optional: Not used by this endpoint, but available for reference' },
     ],
   },
   {
@@ -151,11 +156,10 @@ const twilioEndpoints: TwilioEndpoint[] = [
     method: 'DELETE',
     endpoint: '/api/twilio/test/remove-participant',
     inputs: [
-      { name: 'accountSid', label: 'Account SID', type: 'text', placeholder: 'AC...', required: true },
-      { name: 'authToken', label: 'Auth Token', type: 'password', placeholder: 'Your auth token', required: true },
-      { name: 'conversationSid', label: 'Conversation SID', type: 'text', placeholder: 'CH...', required: true },
-      { name: 'participantSid', label: 'Participant SID', type: 'text', placeholder: 'MB...', required: true, description: 'The SID of the participant to remove (get from List Participants)' },
-      { name: 'conversationServiceSid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Required if conversation belongs to a specific service' },
+      { name: 'account_id', label: 'Account ID', type: 'text', placeholder: 'Account ID from database', required: true },
+      { name: 'conversation_sid', label: 'Conversation SID', type: 'text', placeholder: 'CH...', required: true },
+      { name: 'participant_sid', label: 'Participant SID', type: 'text', placeholder: 'MB...', required: true, description: 'The SID of the participant to remove (get from List Participants)' },
+      { name: 'conversation_service_sid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Required if conversation belongs to a specific service' },
     ],
   },
   {
@@ -165,11 +169,10 @@ const twilioEndpoints: TwilioEndpoint[] = [
     method: 'DELETE',
     endpoint: '/api/twilio/test/delete-message',
     inputs: [
-      { name: 'accountSid', label: 'Account SID', type: 'text', placeholder: 'AC...', required: true },
-      { name: 'authToken', label: 'Auth Token', type: 'password', placeholder: 'Your auth token', required: true },
-      { name: 'conversationSid', label: 'Conversation SID', type: 'text', placeholder: 'CH...', required: true },
-      { name: 'messageSid', label: 'Message SID', type: 'text', placeholder: 'IM...', required: true, description: 'The SID of the message to delete (get from List Messages)' },
-      { name: 'conversationServiceSid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Required if conversation belongs to a specific service' },
+      { name: 'account_id', label: 'Account ID', type: 'text', placeholder: 'Account ID from database', required: true },
+      { name: 'conversation_sid', label: 'Conversation SID', type: 'text', placeholder: 'CH...', required: true },
+      { name: 'message_sid', label: 'Message SID', type: 'text', placeholder: 'IM...', required: true, description: 'The SID of the message to delete (get from List Messages)' },
+      { name: 'conversation_service_sid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Required if conversation belongs to a specific service' },
     ],
   },
   {
@@ -179,10 +182,9 @@ const twilioEndpoints: TwilioEndpoint[] = [
     method: 'DELETE',
     endpoint: '/api/twilio/test/delete-conversation',
     inputs: [
-      { name: 'accountSid', label: 'Account SID', type: 'text', placeholder: 'AC...', required: true },
-      { name: 'authToken', label: 'Auth Token', type: 'password', placeholder: 'Your auth token', required: true },
-      { name: 'conversationSid', label: 'Conversation SID(s)', type: 'text', placeholder: 'CH... or CH1,CH2,CH3', required: true, description: 'Single SID or comma-separated list of SIDs to delete' },
-      { name: 'conversationServiceSid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Required if conversation(s) belong to a specific service' },
+      { name: 'account_id', label: 'Account ID', type: 'text', placeholder: 'Account ID from database', required: true },
+      { name: 'conversation_sid', label: 'Conversation SID(s)', type: 'text', placeholder: 'CH... or CH1,CH2,CH3', required: true, description: 'Single SID or comma-separated list of SIDs to delete' },
+      { name: 'conversation_service_sid', label: 'Service SID (optional)', type: 'text', placeholder: 'IS...', required: false, description: 'Required if conversation(s) belong to a specific service' },
     ],
   },
 ];
@@ -208,8 +210,8 @@ export default function ApiTestPage() {
 
   const endpoint = twilioEndpoints.find(e => e.id === selectedEndpoint)!;
   
-  // Check if current endpoint supports conversationServiceSid
-  const supportsServiceSid = endpoint.inputs.some(input => input.name === 'conversationServiceSid');
+  // Check if current endpoint supports conversation_service_sid
+  const supportsServiceSid = endpoint.inputs.some(input => input.name === 'conversation_service_sid');
 
   // Fetch sender accounts on mount
   useEffect(() => {
@@ -231,7 +233,7 @@ export default function ApiTestPage() {
     }
   }, [token]);
 
-  // Auto-populate account SID, auth token, and conversation service SID when account is selected
+  // Auto-populate account_id and conversation service SID when account is selected
   useEffect(() => {
     if (selectedAccountId) {
       const account = accounts.find(a => a.id === selectedAccountId);
@@ -254,9 +256,8 @@ export default function ApiTestPage() {
         // Update form data
         setFormData(prev => ({
           ...prev,
-          accountSid: account.account_sid || '',
-          authToken: account.auth_token || '',
-          conversationServiceSid: serviceSid,
+          account_id: account.id || '',
+          conversation_service_sid: serviceSid,
         }));
         
         // Also update service dropdown if service SID exists and matches one of our services
@@ -280,22 +281,120 @@ export default function ApiTestPage() {
     setError(null);
 
     try {
-      const payload = {
-        endpoint: selectedEndpoint,
-        ...formData,
-      };
-      const response = await apiPost('/twilio/test', payload);
-      if (response.success === false) {
-        setError(response.error || 'Request failed');
-        setResult(response);
-      } else {
-        setResult(response);
-        setError(null);
+      let response: any;
+
+      switch (selectedEndpoint) {
+        case 'create-conversation':
+          response = await hebesCreateConversation({
+            account_id: formData.account_id,
+            friendly_name: formData.friendly_name,
+            conversation_service_sid: formData.conversation_service_sid,
+          }, token);
+          break;
+
+        case 'list-conversations':
+          response = await hebesListConversations({
+            account_id: formData.account_id,
+            conversation_service_sid: formData.conversation_service_sid,
+            limit: formData.limit ? parseInt(formData.limit) : undefined,
+          }, token);
+          break;
+
+        case 'find-conversation-by-phone':
+          response = await hebesFindConversationByPhone({
+            account_id: formData.account_id,
+            phone_number: formData.phone_number,
+            conversation_service_sid: formData.conversation_service_sid,
+            limit: formData.limit ? parseInt(formData.limit) : undefined,
+          }, token);
+          break;
+
+        case 'get-conversation':
+          response = await hebesGetConversation({
+            account_id: formData.account_id,
+            conversation_sid: formData.conversation_sid,
+            conversation_service_sid: formData.conversation_service_sid,
+          }, token);
+          break;
+
+        case 'add-participant':
+          response = await hebesAddParticipant({
+            account_id: formData.account_id,
+            conversation_sid: formData.conversation_sid,
+            address: formData.address,
+            proxy_address: formData.proxy_address,
+            conversation_service_sid: formData.conversation_service_sid,
+          }, token);
+          break;
+
+        case 'list-participants':
+          response = await hebesListParticipants({
+            account_id: formData.account_id,
+            conversation_sid: formData.conversation_sid,
+            conversation_service_sid: formData.conversation_service_sid,
+          }, token);
+          break;
+
+        case 'send-message':
+          response = await hebesSendMessage({
+            account_id: formData.account_id,
+            conversation_sid: formData.conversation_sid,
+            body: formData.body,
+            author: formData.author,
+            conversation_service_sid: formData.conversation_service_sid,
+          }, token);
+          break;
+
+        case 'list-messages':
+          response = await hebesListMessages({
+            account_id: formData.account_id,
+            conversation_sid: formData.conversation_sid,
+            limit: formData.limit ? parseInt(formData.limit) : undefined,
+            conversation_service_sid: formData.conversation_service_sid,
+          }, token);
+          break;
+
+        case 'list-services':
+          response = await hebesListServices(formData.account_id, token);
+          break;
+
+        case 'remove-participant':
+          response = await hebesRemoveParticipant({
+            account_id: formData.account_id,
+            conversation_sid: formData.conversation_sid,
+            participant_sid: formData.participant_sid,
+            conversation_service_sid: formData.conversation_service_sid,
+          }, token);
+          break;
+
+        case 'delete-message':
+          response = await hebesDeleteMessage({
+            account_id: formData.account_id,
+            conversation_sid: formData.conversation_sid,
+            message_sid: formData.message_sid,
+            conversation_service_sid: formData.conversation_service_sid,
+          }, token);
+          break;
+
+        case 'delete-conversation':
+          response = await hebesDeleteConversation({
+            account_id: formData.account_id,
+            conversation_sid: formData.conversation_sid,
+            conversation_service_sid: formData.conversation_service_sid,
+          }, token);
+          break;
+
+        default:
+          throw new Error(`Unknown endpoint: ${selectedEndpoint}`);
       }
+
+      // Wrap response in success format
+      setResult({ success: true, data: response });
+      setError(null);
     } catch (err: any) {
       const errorMessage = err.message || 'Unknown error';
       setError(errorMessage);
-      setResult(null);
+      setResult({ success: false, error: errorMessage });
     } finally {
       setLoading(false);
     }
@@ -311,11 +410,7 @@ export default function ApiTestPage() {
     const preview: any = {};
     endpoint.inputs.forEach(input => {
       if (formData[input.name]) {
-        if (input.name === 'authToken') {
-          preview[input.name] = '***';
-        } else {
-          preview[input.name] = formData[input.name];
-        }
+        preview[input.name] = formData[input.name];
       }
     });
     return preview;
@@ -387,8 +482,7 @@ export default function ApiTestPage() {
                       // Clear account fields if "None" is selected
                       setFormData(prev => {
                         const newData = { ...prev };
-                        delete newData.accountSid;
-                        delete newData.authToken;
+                        delete newData.account_id;
                         return newData;
                       });
                     }
@@ -405,7 +499,7 @@ export default function ApiTestPage() {
                 </select>
                 {selectedAccountId && (
                   <p className="text-xs text-blue-700 mt-2">
-                    ✓ Account SID and Auth Token will be auto-filled from selected account
+                    ✓ Account ID will be auto-filled from selected account
                   </p>
                 )}
               </div>
@@ -423,12 +517,12 @@ export default function ApiTestPage() {
                       if (e.target.value) {
                         setFormData(prev => ({
                           ...prev,
-                          conversationServiceSid: e.target.value,
+                          conversation_service_sid: e.target.value,
                         }));
                       } else {
                         setFormData(prev => {
                           const newData = { ...prev };
-                          delete newData.conversationServiceSid;
+                          delete newData.conversation_service_sid;
                           return newData;
                         });
                       }
@@ -453,10 +547,10 @@ export default function ApiTestPage() {
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
                 {endpoint.inputs.map((input) => {
-                  const isAccountField = input.name === 'accountSid' || input.name === 'authToken';
-                  const isAutoFilled = isAccountField && selectedAccountId;
-                  const isServiceSidField = input.name === 'conversationServiceSid';
-                  const isServiceAutoFilled = isServiceSidField && selectedServiceSid;
+                  const isAccountField = input.name === 'account_id';
+                  const isAutoFilled = !!(isAccountField && selectedAccountId);
+                  const isServiceSidField = input.name === 'conversation_service_sid';
+                  const isServiceAutoFilled = !!(isServiceSidField && selectedServiceSid);
                   
                   return (
                     <div key={input.name}>
